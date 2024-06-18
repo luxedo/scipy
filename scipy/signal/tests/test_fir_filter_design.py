@@ -545,8 +545,6 @@ class TestRemezord:
         assert_almost_equal(weights, [1., 17.09973573])
 
 
-
-
 class TestFirls:
 
     def test_bad_args(self):

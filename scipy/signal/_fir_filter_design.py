@@ -14,9 +14,10 @@ from scipy.signal._arraytools import _validate_fs
 
 from . import _sigtools
 
-__all__ = ['kaiser_beta', 'kaiser_atten', 'kaiserord', 'firwin', 'firwin2',
-           'remezord', 'remez', 'firls', 'minimum_phase']
-
+__all__ = [
+    'kaiser_beta', 'kaiser_atten', 'kaiserord', 'firwin', 'firwin2', 'remez',
+    'remezord', 'firls', 'minimum_phase',
+]
 
 # Some notes on function parameters:
 #
@@ -941,8 +942,8 @@ def remezord(freqs, amps, rips, fs=1.0, alg="ichige"):
     Parameters:
     ----------
     freqs : array_like
-        A monotonic sequence of non-negative band edges specified in Hertz. All
-        elements must be less than half the sampling frequency (`fs`).
+        A monotonic sequence of non-negative band edges in Hertz. All elements
+        must be less than half the sampling frequency (`fs`).
     amps : array_like
         A sequence containing the desired amplitudes of the signal to be
         filtered over the corresponding frequency bands in `freqs`.
@@ -997,8 +998,24 @@ def remezord(freqs, amps, rips, fs=1.0, alg="ichige"):
            Filter Length for Optimum FIR Digital Filters, IEEE Transactions on
            Circuits and Systems, 47(10):1008-1017, October 2000.
 
-    """
+    Examples
+    --------
+    >>> rp, rs = 3, 40  # Passband ripple, Stopband ripple
+    >>> fs = 2000  # Sampling frequency
+    >>> freqs = np.array([500, 600])  # Band edges
+    >>> amps = np.array([1, 0])  # Amplitudes
+    >>> rips = [(10**(rp/20)-1)/(10**(rp/20)+1), 10**(-rs/20)]  # Max ripples
+    >>> numtaps, bands, desired, weights = remezord(freqs, amps, rips, fs=fs)
+    >>> numtaps
+    27
+    >>> bands
+    [0, 0.25, 0.3, 0.5])
+    >>> desired
+    [1., 0.])
+    >>> weights
+    [1., 17.09973573])
 
+    """
     # Make sure the parameters are floating point numpy arrays:
     freqs = np.asarray(freqs, "d")
     amps = np.asarray(amps, "d")
