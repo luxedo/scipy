@@ -835,18 +835,6 @@ def remez(numtaps, bands, desired, *, weight=None, type='bandpass',
                             maxiter, grid_density)
 
 
-def _oddround(x):
-    """Return the nearest odd integer from x."""
-
-    return x - np.mod(x, 2) + 1
-
-
-def _oddceil(x):
-    """Return the smallest odd integer not less than x."""
-
-    return _oddround(x + 1)
-
-
 def _remlplen_herrmann(fp, fs, dp, ds):
     """
     Determine the length of the low pass filter with passband frequency
@@ -869,7 +857,8 @@ def _remlplen_herrmann(fp, fs, dp, ds):
     f = b[0] + b[1] * (np.log10(dp) - np.log10(ds))
     N1 = Dinf / dF - f * dF + 1
 
-    return int(_oddround(N1))
+    # Return the nearest odd integer from N1.
+    return int(N1 - np.mod(N1, 2) + 1)
 
 
 def _remlplen_kaiser(fp, fs, dp, ds):
@@ -885,7 +874,8 @@ def _remlplen_kaiser(fp, fs, dp, ds):
     dF = fs - fp
     N2 = (-20 * np.log10(np.sqrt(dp * ds)) - 13.0) / (14.6 * dF) + 1.0
 
-    return int(_oddceil(N2))
+    # Return the smallest odd integer not less than N2.
+    return int((N2+1) - np.mod((N2+1), 2) + 1)
 
 
 def _remlplen_ichige(fp, fs, dp, ds):
@@ -1020,9 +1010,9 @@ def remezord(freqs, amps, rips, *, fs=1.0, alg="ichige"):
     >>> freqs = [500, 600]  # Band edges
     >>> amps = [1, 0]  # Amplitudes
     >>> rips = [(10**(rp/20)-1)/(10**(rp/20)+1), 10**(-rs/20)]  # Max ripples
-
-    Then, generate the filter parameters with `remezord`:
-
+    ...
+    >>> # Then, generate the filter parameters with `remezord`:
+    ...
     >>> numtaps, bands, desired, weight = remezord(freqs, amps, rips, fs=fs)
     >>> numtaps
     27
@@ -1047,7 +1037,7 @@ def remezord(freqs, amps, rips, *, fs=1.0, alg="ichige"):
     ...     ax.set_xlabel('Frequency (Hz)')
     ...     ax.set_ylabel('Gain (dB)')
     ...     ax.set_title(title)
-
+    ...
     >>> taps = remez(numtaps, bands, desired, weight=weight)
     >>> w, h = freqz(taps, worN=2000, fs=fs)
     >>> plot_response(w, h, "Remezord Low-pass Filter")
@@ -1087,7 +1077,7 @@ def remezord(freqs, amps, rips, *, fs=1.0, alg="ichige"):
     elif alg == "ichige":
         remlplen = _remlplen_ichige
     else:
-        raise ValueError("Unknown filter length approximation algorithm.")
+        raise ValueError(f"Parameter {alg=} not in ['herrmann' ,'kaiser', 'ichige'].")
 
     # Scale ripples with respect to band amplitudes:
     rips /= amps + (amps == 0.0)
