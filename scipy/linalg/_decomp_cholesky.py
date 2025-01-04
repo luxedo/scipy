@@ -4,6 +4,7 @@ import numpy as np
 from numpy import asarray_chkfinite, asarray, atleast_2d, empty_like
 
 # Local imports
+from scipy._lib._util import _apply_over_batch
 from ._misc import LinAlgError, _datacopied
 from .lapack import get_lapack_funcs
 
@@ -43,6 +44,7 @@ def _cholesky(a, lower=False, overwrite_a=False, clean=True,
     return c, lower
 
 
+@_apply_over_batch(('a', 2))
 def cholesky(a, lower=False, overwrite_a=False, check_finite=True):
     """
     Compute the Cholesky decomposition of a matrix.
@@ -56,11 +58,12 @@ def cholesky(a, lower=False, overwrite_a=False, check_finite=True):
         Matrix to be decomposed
     lower : bool, optional
         Whether to compute the upper- or lower-triangular Cholesky
-        factorization.  Default is upper-triangular.
+        factorization. During decomposition, only the selected half of the
+        matrix is referenced. Default is upper-triangular.
     overwrite_a : bool, optional
         Whether to overwrite data in `a` (may improve performance).
     check_finite : bool, optional
-        Whether to check that the input matrix contains only finite numbers.
+        Whether to check that the entire input matrix contains only finite numbers.
         Disabling may give a performance gain, but may result in problems
         (crashes, non-termination) if the inputs do contain infinities or NaNs.
 
@@ -72,6 +75,16 @@ def cholesky(a, lower=False, overwrite_a=False, check_finite=True):
     Raises
     ------
     LinAlgError : if decomposition fails.
+
+    Notes
+    -----
+    During the finiteness check (if selected), the entire matrix `a` is
+    checked. During decomposition, `a` is assumed to be symmetric or Hermitian
+    (as applicable), and only the half selected by option `lower` is referenced.
+    Consequently, if `a` is asymmetric/non-Hermitian, `cholesky` may still
+    succeed if the symmetric/Hermitian matrix represented by the selected half
+    is positive definite, yet it may fail if an element in the other half is
+    non-finite.
 
     Examples
     --------
@@ -92,6 +105,7 @@ def cholesky(a, lower=False, overwrite_a=False, check_finite=True):
     return c
 
 
+@_apply_over_batch(("a", 2))
 def cho_factor(a, lower=False, overwrite_a=False, check_finite=True):
     """
     Compute the Cholesky decomposition of a matrix, to use in cho_solve
@@ -110,12 +124,13 @@ def cho_factor(a, lower=False, overwrite_a=False, check_finite=True):
     a : (M, M) array_like
         Matrix to be decomposed
     lower : bool, optional
-        Whether to compute the upper or lower triangular Cholesky factorization
+        Whether to compute the upper or lower triangular Cholesky factorization.
+        During decomposition, only the selected half of the matrix is referenced.
         (Default: upper-triangular)
     overwrite_a : bool, optional
         Whether to overwrite data in a (may improve performance)
     check_finite : bool, optional
-        Whether to check that the input matrix contains only finite numbers.
+        Whether to check that the entire input matrix contains only finite numbers.
         Disabling may give a performance gain, but may result in problems
         (crashes, non-termination) if the inputs do contain infinities or NaNs.
 
@@ -136,6 +151,16 @@ def cho_factor(a, lower=False, overwrite_a=False, check_finite=True):
     --------
     cho_solve : Solve a linear set equations using the Cholesky factorization
                 of a matrix.
+
+    Notes
+    -----
+    During the finiteness check (if selected), the entire matrix `a` is
+    checked. During decomposition, `a` is assumed to be symmetric or Hermitian
+    (as applicable), and only the half selected by option `lower` is referenced.
+    Consequently, if `a` is asymmetric/non-Hermitian, `cholesky` may still
+    succeed if the symmetric/Hermitian matrix represented by the selected half
+    is positive definite, yet it may fail if an element in the other half is
+    non-finite.
 
     Examples
     --------
@@ -193,7 +218,12 @@ def cho_solve(c_and_lower, b, overwrite_b=False, check_finite=True):
     True
 
     """
-    (c, lower) = c_and_lower
+    c, lower = c_and_lower
+    return _cho_solve(c, b, lower, overwrite_b=overwrite_b, check_finite=check_finite)
+
+
+@_apply_over_batch(('c', 2), ('b', '1|2'))
+def _cho_solve(c, b, lower, overwrite_b, check_finite):
     if check_finite:
         b1 = asarray_chkfinite(b)
         c = asarray_chkfinite(c)
@@ -222,6 +252,7 @@ def cho_solve(c_and_lower, b, overwrite_b=False, check_finite=True):
     return x
 
 
+@_apply_over_batch(("ab", 2))
 def cholesky_banded(ab, overwrite_ab=False, lower=False, check_finite=True):
     """
     Cholesky decompose a banded Hermitian positive-definite matrix
@@ -349,6 +380,12 @@ def cho_solve_banded(cb_and_lower, b, overwrite_b=False, check_finite=True):
 
     """
     (cb, lower) = cb_and_lower
+    return _cho_solve_banded(cb, b, lower, overwrite_b=overwrite_b,
+                             check_finite=check_finite)
+
+
+@_apply_over_batch(('cb', 2), ('b', '1|2'))
+def _cho_solve_banded(cb, b, lower, overwrite_b, check_finite):
     if check_finite:
         cb = asarray_chkfinite(cb)
         b = asarray_chkfinite(b)

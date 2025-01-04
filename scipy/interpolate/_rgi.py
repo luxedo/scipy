@@ -6,7 +6,7 @@ import numpy as np
 
 import scipy.sparse.linalg as ssl
 
-from .interpnd import _ndim_coords_from_arrays
+from ._interpnd import _ndim_coords_from_arrays
 from ._cubic import PchipInterpolator
 from ._rgi_cython import evaluate_linear_2d, find_indices
 from ._bsplines import make_interp_spline
@@ -154,6 +154,11 @@ class RegularGridInterpolator:
     "cubic_legacy" and "quintic_legacy". These methods allow faster construction
     but evaluations will be much slower.
 
+    **Rounding rule at half points with `nearest` method**
+
+    The rounding rule with the `nearest` method at half points is rounding *down*.
+
+
     Examples
     --------
     **Evaluate a function on the points of a 3-D grid**
@@ -267,10 +272,11 @@ class RegularGridInterpolator:
     def __init__(self, points, values, method="linear", bounds_error=True,
                  fill_value=np.nan, *, solver=None, solver_args=None):
         if method not in self._ALL_METHODS:
-            raise ValueError("Method '%s' is not defined" % method)
+            raise ValueError(f"Method '{method}' is not defined")
         elif method in self._SPLINE_METHODS:
             self._validate_grid_dimensions(points, method)
         self.method = method
+        self._spline = None
         self.bounds_error = bounds_error
         self.grid, self._descending_dimensions = _check_points(points)
         self.values = self._check_values(values)
@@ -387,12 +393,13 @@ class RegularGridInterpolator:
         >>> interp([[1.5, 1.3], [0.3, 4.5]], method='linear')
         array([ 4.7, 24.3])
         """
+        _spline = self._spline
         method = self.method if method is None else method
         is_method_changed = self.method != method
         if method not in self._ALL_METHODS:
-            raise ValueError("Method '%s' is not defined" % method)
+            raise ValueError(f"Method '{method}' is not defined")
         if is_method_changed and method in self._SPLINE_METHODS_ndbspl:
-            self._spline = self._construct_spline(method)
+            _spline = self._construct_spline(method)
 
         if nu is not None and method not in self._SPLINE_METHODS_ndbspl:
             raise ValueError(
@@ -428,7 +435,7 @@ class RegularGridInterpolator:
             if method in self._SPLINE_METHODS_recursive:
                 result = self._evaluate_spline(xi, method)
             else:
-                result = self._spline(xi, nu=nu)
+                result = _spline(xi, nu=nu)
 
         if not self.bounds_error and self.fill_value is not None:
             result[out_of_bounds] = self.fill_value
